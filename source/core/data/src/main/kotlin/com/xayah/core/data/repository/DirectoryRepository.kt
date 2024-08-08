@@ -45,14 +45,13 @@ class DirectoryRepository @Inject constructor(
         val customDirList = mutableListOf<DirectoryUpsertEntity>()
         pathList.forEach { pathString ->
             if (pathString.isNotEmpty()) {
-                val path = Paths.get(pathString)
-                val parent = path.parent.pathString
-                val child = path.name
+                val parent = PathUtil.getParentPath(pathString)
+                val child = PathUtil.getFileName(pathString)
 
                 // Custom storage
                 val dir = DirectoryUpsertEntity(
                     id = directoryDao.queryId(parent = parent, child = child),
-                    title = context.getString(R.string.custom_directory),
+                    title = "",
                     parent = parent,
                     child = child,
                     storageType = StorageType.CUSTOM,
@@ -92,7 +91,7 @@ class DirectoryRepository @Inject constructor(
                     internalDirs.add(
                         DirectoryUpsertEntity(
                             id = directoryDao.queryId(parent = storageItem, child = child),
-                            title = context.getString(R.string.internal_storage),
+                            title = "",
                             parent = storageItem,
                             child = child,
                             storageType = StorageType.INTERNAL,
@@ -112,7 +111,7 @@ class DirectoryRepository @Inject constructor(
                     externalDirs.add(
                         DirectoryUpsertEntity(
                             id = directoryDao.queryId(parent = storageItem, child = child),
-                            title = context.getString(R.string.external_storage),
+                            title = "",
                             parent = storageItem,
                             child = child,
                             storageType = StorageType.EXTERNAL,

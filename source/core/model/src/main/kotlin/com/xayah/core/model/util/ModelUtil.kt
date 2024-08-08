@@ -1,6 +1,8 @@
 package com.xayah.core.model.util
 
+import android.os.Build
 import com.xayah.core.model.CompressionType
+import com.xayah.core.model.KillAppOption
 import com.xayah.core.model.LZ4_SUFFIX
 import com.xayah.core.model.OpType
 import com.xayah.core.model.SFTPAuthMode
@@ -52,7 +54,7 @@ fun SelectionType.Companion.of(name: String?): SelectionType =
     runCatching { SelectionType.valueOf(name!!.uppercase()) }.getOrDefault(SelectionType.DEFAULT)
 
 fun ThemeType.Companion.of(name: String?): ThemeType =
-    runCatching { ThemeType.valueOf(name!!.uppercase()) }.getOrDefault(ThemeType.AUTO)
+    runCatching { ThemeType.valueOf(name!!.uppercase()) }.getOrDefault(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) ThemeType.AUTO else ThemeType.LIGHT_THEME)
 
 fun SmbAuthMode.Companion.indexOf(index: Int): SmbAuthMode = when (index) {
     1 -> SmbAuthMode.GUEST
@@ -64,3 +66,12 @@ fun SFTPAuthMode.Companion.indexOf(index: Int): SFTPAuthMode = when (index) {
     1 -> SFTPAuthMode.PUBLIC_KEY
     else -> SFTPAuthMode.PASSWORD
 }
+
+fun KillAppOption.Companion.indexOf(index: Int): KillAppOption = when (index) {
+    1 -> KillAppOption.OPTION_I
+    2 -> KillAppOption.OPTION_II
+    else -> KillAppOption.DISABLED
+}
+
+fun KillAppOption.Companion.of(name: String?): KillAppOption =
+    runCatching { KillAppOption.valueOf(name!!.uppercase()) }.getOrDefault(KillAppOption.OPTION_II)

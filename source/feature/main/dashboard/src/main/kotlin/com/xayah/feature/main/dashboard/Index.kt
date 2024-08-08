@@ -1,5 +1,6 @@
 package com.xayah.feature.main.dashboard
 
+import android.annotation.SuppressLint
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
@@ -14,43 +15,53 @@ import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.xayah.core.common.util.BuildConfigUtil
+import com.xayah.core.ui.component.DismissState
 import com.xayah.core.ui.component.IconButton
+import com.xayah.core.ui.component.LocalSlotScope
 import com.xayah.core.ui.component.MainIndexSubScaffold
 import com.xayah.core.ui.component.Section
 import com.xayah.core.ui.component.paddingTop
-import com.xayah.core.ui.material3.tokens.ColorSchemeKeyTokens
-import com.xayah.core.ui.model.ImageVectorToken
 import com.xayah.core.ui.model.SegmentProgress
-import com.xayah.core.ui.model.StringResourceToken
 import com.xayah.core.ui.route.MainRoutes
+import com.xayah.core.ui.theme.ThemedColorSchemeKeyTokens
 import com.xayah.core.ui.token.SizeTokens
 import com.xayah.core.ui.util.LocalNavController
-import com.xayah.core.ui.util.fromDrawable
-import com.xayah.core.ui.util.fromString
-import com.xayah.core.ui.util.fromStringId
-import com.xayah.core.ui.util.fromVector
+import com.xayah.core.util.navigateSingle
+import kotlinx.coroutines.launch
 
+@SuppressLint("StringFormatInvalid")
 @ExperimentalFoundationApi
 @ExperimentalLayoutApi
 @ExperimentalAnimationApi
 @ExperimentalMaterial3Api
 @Composable
 fun PageDashboard() {
+    val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val viewModel = hiltViewModel<IndexViewModel>()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val navController = LocalNavController.current!!
     val lastBackupTime by viewModel.lastBackupTimeState.collectAsStateWithLifecycle()
     val directoryState by viewModel.directoryState.collectAsStateWithLifecycle()
     val nullBackupDir by remember(directoryState) { mutableStateOf(directoryState == null) }
+    val dialogState = LocalSlotScope.current!!.dialogSlot
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(null) {
         viewModel.emitIntentOnIO(IndexUiIntent.Update)
@@ -58,13 +69,42 @@ fun PageDashboard() {
 
     MainIndexSubScaffold(
         scrollBehavior = scrollBehavior,
-        title = StringResourceToken.fromStringId(R.string.app_name),
+        snackbarHostState = viewModel.snackbarHostState,
+        title = stringResource(id = R.string.app_name),
+        updateAvailable = uiState.latestRelease != null,
+        onVersionChipClick = {
+            scope.launch {
+                val state = dialogState.open(
+                    initialState = false,
+                    title = context.getString(R.string.update_available),
+                    icon = null,
+                    dismissText = context.getString(R.string.changelog),
+                    confirmText = context.getString(R.string.download),
+                    block = { _ -> Text(text = context.getString(R.string.args_update_from, BuildConfigUtil.VERSION_NAME, uiState.latestRelease?.name)) }
+                ).first
+                when (state) {
+                    DismissState.CONFIRM -> {
+                        uiState.latestRelease?.assets?.firstOrNull { it.url.contains(BuildConfigUtil.FLAVOR_feature) && it.url.contains(BuildConfigUtil.FLAVOR_abi) }?.apply {
+                            viewModel.emitIntent(IndexUiIntent.ToBrowser(context = context, url = this.url))
+                        }
+                    }
+
+                    DismissState.CANCEL -> {
+                        uiState.latestRelease?.url?.apply {
+                            viewModel.emitIntent(IndexUiIntent.ToBrowser(context = context, url = this))
+                        }
+                    }
+
+                    DismissState.DISMISS -> {}
+                }
+            }
+        },
         actions = {
             IconButton(
                 enabled = nullBackupDir.not(),
-                icon = ImageVectorToken.fromVector(Icons.Outlined.Settings),
+                icon = Icons.Outlined.Settings,
                 onClick = {
-                    navController.navigate(MainRoutes.Settings.route)
+                    navController.navigateSingle(MainRoutes.Settings.route)
                 }
             )
         }
@@ -75,24 +115,24 @@ fun PageDashboard() {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(SizeTokens.Level24)
         ) {
-            Section(title = StringResourceToken.fromStringId(R.string.overlook)) {
+            Section(title = stringResource(id = R.string.overlook)) {
                 OverviewLastBackupCard(nullBackupDir = nullBackupDir, lastBackupTime = lastBackupTime) {
                     if (nullBackupDir)
-                        navController.navigate(MainRoutes.Directory.route)
+                        navController.navigateSingle(MainRoutes.Directory.route)
                 }
 
                 if (directoryState != null) {
                     OverviewStorageCard(
-                        StringResourceToken.fromString(directoryState!!.title),
+                        stringResource(id = directoryState!!.titleResId),
                         SegmentProgress(used = directoryState!!.usedBytes, total = directoryState!!.totalBytes),
                         SegmentProgress(used = directoryState!!.childUsedBytes, total = directoryState!!.totalBytes),
                     ) {
-                        navController.navigate(MainRoutes.Directory.route)
+                        navController.navigateSingle(MainRoutes.Directory.route)
                     }
                 }
             }
 
-            Section(title = StringResourceToken.fromStringId(R.string.quick_actions)) {
+            Section(title = stringResource(id = R.string.quick_actions)) {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level8),
@@ -102,67 +142,67 @@ fun PageDashboard() {
                     QuickActionsButton(
                         modifier = Modifier.weight(1f),
                         enabled = nullBackupDir.not(),
-                        title = StringResourceToken.fromStringId(R.string.backup_apps),
-                        icon = ImageVectorToken.fromDrawable(R.drawable.ic_rounded_acute),
-                        colorContainer = ColorSchemeKeyTokens.RedPrimaryContainer,
-                        colorL80D20 = ColorSchemeKeyTokens.RedL80D20,
-                        onColorContainer = ColorSchemeKeyTokens.RedOnPrimaryContainer
+                        title = stringResource(id = R.string.backup_apps),
+                        icon = ImageVector.vectorResource(id = R.drawable.ic_rounded_acute),
+                        colorContainer = ThemedColorSchemeKeyTokens.RedPrimaryContainer,
+                        colorL80D20 = ThemedColorSchemeKeyTokens.RedL80D20,
+                        onColorContainer = ThemedColorSchemeKeyTokens.RedOnPrimaryContainer
                     ) {
-                        navController.navigate(MainRoutes.PackagesBackupList.route)
+                        navController.navigateSingle(MainRoutes.PackagesBackupList.route)
                     }
                     QuickActionsButton(
                         modifier = Modifier.weight(1f),
                         enabled = nullBackupDir.not(),
-                        title = StringResourceToken.fromStringId(R.string.backup_files),
-                        icon = ImageVectorToken.fromDrawable(R.drawable.ic_rounded_acute),
-                        colorContainer = ColorSchemeKeyTokens.YellowPrimaryContainer,
-                        colorL80D20 = ColorSchemeKeyTokens.YellowL80D20,
-                        onColorContainer = ColorSchemeKeyTokens.YellowOnPrimaryContainer
+                        title = stringResource(id = R.string.backup_files),
+                        icon = ImageVector.vectorResource(id = R.drawable.ic_rounded_acute),
+                        colorContainer = ThemedColorSchemeKeyTokens.YellowPrimaryContainer,
+                        colorL80D20 = ThemedColorSchemeKeyTokens.YellowL80D20,
+                        onColorContainer = ThemedColorSchemeKeyTokens.YellowOnPrimaryContainer
                     ) {
-                        navController.navigate(MainRoutes.MediumBackupList.route)
+                        navController.navigateSingle(MainRoutes.MediumBackupList.route)
                     }
                     // TODO MMS/SMS, Contacts backup/restore
 //                    QuickActionsButton(
 //                        modifier = Modifier.weight(1f),
 //                        enabled = false,
-//                        title = StringResourceToken.fromStringId(R.string.backup_messages),
-//                        icon = ImageVectorToken.fromDrawable(R.drawable.ic_rounded_acute),
-//                        colorContainer = ColorSchemeKeyTokens.BluePrimaryContainer,
-//                        colorL80D20 = ColorSchemeKeyTokens.BlueL80D20,
-//                        onColorContainer = ColorSchemeKeyTokens.BlueOnPrimaryContainer
+//                        title = stringResource(id = R.string.backup_messages),
+//                        icon = ImageVector.vectorResource(id = R.drawable.ic_rounded_acute),
+//                        colorContainer = ThemedColorSchemeKeyTokens.BluePrimaryContainer,
+//                        colorL80D20 = ThemedColorSchemeKeyTokens.BlueL80D20,
+//                        onColorContainer = ThemedColorSchemeKeyTokens.BlueOnPrimaryContainer
 //                    )
 //                    QuickActionsButton(
 //                        modifier = Modifier.weight(1f),
 //                        enabled = false,
-//                        title = StringResourceToken.fromStringId(R.string.backup_contacts),
-//                        icon = ImageVectorToken.fromDrawable(R.drawable.ic_rounded_acute),
-//                        colorContainer = ColorSchemeKeyTokens.GreenPrimaryContainer,
-//                        colorL80D20 = ColorSchemeKeyTokens.GreenL80D20,
-//                        onColorContainer = ColorSchemeKeyTokens.GreenOnPrimaryContainer
+//                        title = stringResource(id = R.string.backup_contacts),
+//                        icon = ImageVector.vectorResource(id = R.drawable.ic_rounded_acute),
+//                        colorContainer = ThemedColorSchemeKeyTokens.GreenPrimaryContainer,
+//                        colorL80D20 = ThemedColorSchemeKeyTokens.GreenL80D20,
+//                        onColorContainer = ThemedColorSchemeKeyTokens.GreenOnPrimaryContainer
 //                    )
                     QuickActionsButton(
                         modifier = Modifier.weight(1f),
                         enabled = nullBackupDir.not(),
-                        title = StringResourceToken.fromStringId(R.string.cloud),
-                        icon = ImageVectorToken.fromVector(Icons.Outlined.Cloud),
-                        colorContainer = ColorSchemeKeyTokens.PrimaryContainer,
-                        colorL80D20 = ColorSchemeKeyTokens.PrimaryL80D20,
-                        onColorContainer = ColorSchemeKeyTokens.OnPrimaryContainer,
-                        actionIcon = ImageVectorToken.fromVector(Icons.Rounded.KeyboardArrowRight)
+                        title = stringResource(id = R.string.cloud),
+                        icon = Icons.Outlined.Cloud,
+                        colorContainer = ThemedColorSchemeKeyTokens.PrimaryContainer,
+                        colorL80D20 = ThemedColorSchemeKeyTokens.PrimaryL80D20,
+                        onColorContainer = ThemedColorSchemeKeyTokens.OnPrimaryContainer,
+                        actionIcon = Icons.Rounded.KeyboardArrowRight
                     ) {
-                        navController.navigate(MainRoutes.Cloud.route)
+                        navController.navigateSingle(MainRoutes.Cloud.route)
                     }
                     QuickActionsButton(
                         modifier = Modifier.weight(1f),
                         enabled = nullBackupDir.not(),
-                        title = StringResourceToken.fromStringId(R.string.restore),
-                        icon = ImageVectorToken.fromDrawable(R.drawable.ic_rounded_history),
-                        colorContainer = ColorSchemeKeyTokens.SecondaryContainer,
-                        colorL80D20 = ColorSchemeKeyTokens.SecondaryL80D20,
-                        onColorContainer = ColorSchemeKeyTokens.OnSecondaryContainer,
-                        actionIcon = ImageVectorToken.fromVector(Icons.Rounded.KeyboardArrowRight)
+                        title = stringResource(id = R.string.restore),
+                        icon = ImageVector.vectorResource(id = R.drawable.ic_rounded_history),
+                        colorContainer = ThemedColorSchemeKeyTokens.SecondaryContainer,
+                        colorL80D20 = ThemedColorSchemeKeyTokens.SecondaryL80D20,
+                        onColorContainer = ThemedColorSchemeKeyTokens.OnSecondaryContainer,
+                        actionIcon = Icons.Rounded.KeyboardArrowRight
                     ) {
-                        navController.navigate(MainRoutes.Restore.route)
+                        navController.navigateSingle(MainRoutes.Restore.route)
                     }
                 }
             }

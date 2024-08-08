@@ -1,8 +1,8 @@
 package com.xayah.feature.setup
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -16,7 +16,7 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @ExperimentalAnimationApi
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     @ExperimentalLayoutApi
     @ExperimentalFoundationApi
     @ExperimentalMaterial3Api
@@ -27,7 +27,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             DataBackupTheme {
                 val navController = rememberNavController()
-                CompositionLocalProvider(LocalNavController provides navController) {
+                CompositionLocalProvider(
+                    LocalNavController provides navController,
+                    androidx.lifecycle.compose.LocalLifecycleOwner provides androidx.compose.ui.platform.LocalLifecycleOwner.current,
+                ) {
                     SetupGraph()
                 }
             }

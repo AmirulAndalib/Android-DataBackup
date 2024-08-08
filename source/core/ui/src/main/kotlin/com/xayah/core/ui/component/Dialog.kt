@@ -19,19 +19,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import com.xayah.core.ui.R
 import com.xayah.core.ui.material3.AlertDialog
 import com.xayah.core.ui.material3.Surface
-import com.xayah.core.ui.material3.toColor
-import com.xayah.core.ui.material3.tokens.ColorSchemeKeyTokens
 import com.xayah.core.ui.model.DialogCheckBoxItem
 import com.xayah.core.ui.model.DialogRadioItem
-import com.xayah.core.ui.model.ImageVectorToken
-import com.xayah.core.ui.model.StringResourceToken
+import com.xayah.core.ui.theme.ThemedColorSchemeKeyTokens
+import com.xayah.core.ui.theme.value
 import com.xayah.core.ui.token.SizeTokens
-import com.xayah.core.ui.util.fromStringId
-import com.xayah.core.ui.util.value
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
@@ -43,6 +41,14 @@ fun rememberDialogState(): DialogState {
     val state = remember { DialogState() }
     state.Insert()
     return state
+}
+
+enum class DismissState {
+    DISMISS,
+    CANCEL,
+    CONFIRM;
+
+    val isConfirm get() = this == CONFIRM
 }
 
 class DialogState {
@@ -63,13 +69,13 @@ class DialogState {
      */
     suspend fun <T> open(
         initialState: T,
-        title: StringResourceToken,
-        icon: ImageVectorToken? = null,
-        confirmText: StringResourceToken? = null,
-        dismissText: StringResourceToken? = null,
+        title: String,
+        icon: ImageVector? = null,
+        confirmText: String? = null,
+        dismissText: String? = null,
         contentHorizontalPadding: Boolean = true,
         block: @Composable (MutableState<T>) -> Unit,
-    ): Pair<Boolean, T> {
+    ): Pair<DismissState, T> {
         return suspendCancellableCoroutine { continuation ->
             continuation.invokeOnCancellation { dismiss() }
             content = {
@@ -77,22 +83,22 @@ class DialogState {
                 AlertDialog(
                     onDismissRequest = {
                         dismiss()
-                        continuation.resume(Pair(false, initialState))
+                        continuation.resume(Pair(DismissState.DISMISS, initialState))
                     },
                     confirmButton = {
-                        TextButton(text = confirmText ?: StringResourceToken.fromStringId(R.string.confirm), onClick = {
+                        TextButton(text = confirmText ?: stringResource(id = R.string.confirm), onClick = {
                             dismiss()
-                            continuation.resume(Pair(true, uiState.value))
+                            continuation.resume(Pair(DismissState.CONFIRM, uiState.value))
                         })
                     },
                     dismissButton = {
-                        TextButton(text = dismissText ?: StringResourceToken.fromStringId(R.string.cancel), onClick = {
+                        TextButton(text = dismissText ?: stringResource(id = R.string.cancel), onClick = {
                             dismiss()
-                            continuation.resume(Pair(false, initialState))
+                            continuation.resume(Pair(DismissState.CANCEL, initialState))
                         })
                     },
-                    title = { Text(text = title.value) },
-                    icon = icon?.let { { Icon(imageVector = icon.value, contentDescription = null) } },
+                    title = { Text(text = title) },
+                    icon = icon?.let { { Icon(imageVector = icon, contentDescription = null) } },
                     text = {
                         block(uiState)
                     },
@@ -103,16 +109,16 @@ class DialogState {
     }
 }
 
-suspend fun DialogState.confirm(title: StringResourceToken, text: StringResourceToken) = open(
+suspend fun DialogState.confirm(title: String, text: String) = open(
     initialState = false,
     title = title,
     icon = null,
-    block = { _ -> Text(text = text.value) }
-).first
+    block = { _ -> Text(text = text) }
+).first.isConfirm
 
 @Composable
-fun RadioItem(enabled: Boolean = true, selected: Boolean, title: StringResourceToken, desc: StringResourceToken?, onClick: () -> Unit) {
-    Surface(enabled = true, modifier = Modifier.fillMaxWidth(), onClick = onClick, color = ColorSchemeKeyTokens.Transparent.toColor()) {
+fun RadioItem(enabled: Boolean = true, selected: Boolean, title: String, desc: String?, onClick: () -> Unit) {
+    Surface(enabled = true, modifier = Modifier.fillMaxWidth(), onClick = onClick, color = ThemedColorSchemeKeyTokens.Transparent.value) {
         Row(
             modifier = Modifier
                 .paddingVertical(SizeTokens.Level8)
@@ -126,17 +132,17 @@ fun RadioItem(enabled: Boolean = true, selected: Boolean, title: StringResourceT
                 enabled = enabled
             )
             Column {
-                BodyLargeText(text = title.value, color = ColorSchemeKeyTokens.OnSurface.toColor(), fontWeight = FontWeight.Normal, enabled = enabled)
+                BodyLargeText(text = title, color = ThemedColorSchemeKeyTokens.OnSurface.value, fontWeight = FontWeight.Normal, enabled = enabled)
                 if (desc != null)
-                    BodyMediumText(text = desc.value, color = ColorSchemeKeyTokens.OnSurfaceVariant.toColor(), fontWeight = FontWeight.Normal, enabled = enabled)
+                    BodyMediumText(text = desc, color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value, fontWeight = FontWeight.Normal, enabled = enabled)
             }
         }
     }
 }
 
 @Composable
-fun CheckBoxItem(enabled: Boolean = true, checked: Boolean, title: StringResourceToken, desc: StringResourceToken?, onClick: () -> Unit) {
-    Surface(enabled = true, modifier = Modifier.fillMaxWidth(), onClick = onClick, color = ColorSchemeKeyTokens.Transparent.toColor()) {
+fun CheckBoxItem(enabled: Boolean = true, checked: Boolean, title: String, desc: String?, onClick: () -> Unit) {
+    Surface(enabled = true, modifier = Modifier.fillMaxWidth(), onClick = onClick, color = ThemedColorSchemeKeyTokens.Transparent.value) {
         Row(
             modifier = Modifier
                 .paddingVertical(SizeTokens.Level8)
@@ -145,16 +151,16 @@ fun CheckBoxItem(enabled: Boolean = true, checked: Boolean, title: StringResourc
             horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level8)
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                BodyLargeText(text = title.value, color = ColorSchemeKeyTokens.OnSurface.toColor(), fontWeight = FontWeight.Normal, enabled = enabled)
+                BodyLargeText(text = title, color = ThemedColorSchemeKeyTokens.OnSurface.value, fontWeight = FontWeight.Normal, enabled = enabled)
                 if (desc != null)
-                    BodyMediumText(text = desc.value, color = ColorSchemeKeyTokens.OnSurfaceVariant.toColor(), fontWeight = FontWeight.Normal, enabled = enabled)
+                    BodyMediumText(text = desc, color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value, fontWeight = FontWeight.Normal, enabled = enabled)
             }
             CheckIconButton(enabled = enabled, checked = checked, onCheckedChange = { onClick() })
         }
     }
 }
 
-suspend inline fun <reified T> DialogState.select(title: StringResourceToken, defIndex: Int = 0, items: List<DialogRadioItem<T>>) = open(
+suspend inline fun <reified T> DialogState.select(title: String, defIndex: Int = 0, items: List<DialogRadioItem<T>>) = open(
     initialState = defIndex,
     title = title,
     icon = null,
@@ -174,7 +180,7 @@ suspend inline fun <reified T> DialogState.select(title: StringResourceToken, de
     }
 )
 
-suspend inline fun <reified T> DialogState.select(title: StringResourceToken, def: List<Boolean>, items: List<DialogCheckBoxItem<T>>) = open(
+suspend inline fun <reified T> DialogState.select(title: String, def: List<Boolean>, items: List<DialogCheckBoxItem<T>>) = open(
     initialState = def,
     title = title,
     icon = null,
@@ -197,11 +203,11 @@ suspend inline fun <reified T> DialogState.select(title: StringResourceToken, de
 )
 
 suspend fun DialogState.edit(
-    title: StringResourceToken,
+    title: String,
     defValue: String = "",
     singleLine: Boolean = true,
-    label: StringResourceToken? = null,
-    desc: StringResourceToken? = null,
+    label: String? = null,
+    desc: String? = null,
 ) = open(
     initialState = defValue,
     title = title,
@@ -218,12 +224,12 @@ suspend fun DialogState.edit(
                 label = if (label == null) {
                     null
                 } else {
-                    { Text(text = label.value) }
+                    { Text(text = label) }
                 },
                 supportingText = if (desc == null) {
                     null
                 } else {
-                    { Text(text = desc.value) }
+                    { Text(text = desc) }
                 },
             )
         }

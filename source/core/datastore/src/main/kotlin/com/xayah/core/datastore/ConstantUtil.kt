@@ -12,6 +12,7 @@ object ConstantUtil {
     const val CONFIGURATIONS_KEY_FILE = "file"
     const val FTP_ANONYMOUS_USERNAME = "anonymous" // https://www.rfc-editor.org/rfc/rfc1635
     const val FTP_ANONYMOUS_PASSWORD = "guest"
+    const val LANGUAGE_SYSTEM = "auto"
     val SupportedExternalStorageFormat = listOf(
         "sdfat",
         "fuseblk",
@@ -33,4 +34,6 @@ object ConstantUtil {
     const val CHAT_LINK = "https://t.me/databackupchat"
     const val DONATE_BMAC_LINK = "https://buymeacoffee.com/xayahsususu"
     const val DONATE_AFD_LINK = "https://afdian.net/a/XayahSuSuSu"
+
+    const val FLAVOR_PREMIUM = "premium"
 }

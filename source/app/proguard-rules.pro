@@ -62,3 +62,8 @@
 
 # sftp
 -keep class sun.security.x509.X509Key
+
+# BC
+-keep class org.bouncycastle.jcajce.provider.** { *; }
+-keep class org.bouncycastle.jce.provider.** { *; }
+-keep class org.bouncycastle.crypto.** { *; }
